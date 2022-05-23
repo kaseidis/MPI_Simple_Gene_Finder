@@ -8,4 +8,4 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --exclusive
 
-./gene_finder --input ./data/chr21.fasta --output ./chr21.fasta.out --time
+./gene_finder --input ../data/chr21.fasta --output ./chr21.fasta.out --time

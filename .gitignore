@@ -9,6 +9,13 @@ gene_finder_mpi.exe
 *.out.*
 *.out
 
+!build/gene_finder
+!build/gene_finder.exe
+!build/gene_finder_mpi
+!build/gene_finder_mpi.exe
+!build/*.so
+!build/*.dll
+
 # .vscode
 .vscode/*
 .history/
