@@ -11,6 +11,8 @@
 #include <sstream>
 #include <mpi.h>
 
+MPI_Datatype MPI_GENE_RANGE;
+
 /**
  * @brief C++11 version of sprintf
  *        Reference: https://stackoverflow.com/questions/2342162/
@@ -49,7 +51,7 @@ std::vector<gene::GeneRange> get_gene(
     std::vector<gene::GeneRange> result;
     result.resize(orfs.size());
     std::atomic<size_t> resultIndex = 0;
-    #pragma omp parallel for
+#pragma omp parallel for
     for (int64_t i = start; i < end; ++i)
     {
         if (isGene(orfs[i], seq))
@@ -61,11 +63,11 @@ std::vector<gene::GeneRange> get_gene(
 
 /**
  * @brief Get the job count for each MPI process
- * 
- * @param total_job_count 
- * @param mpi_rank 
- * @param mpi_size 
- * @return size_t 
+ *
+ * @param total_job_count
+ * @param mpi_rank
+ * @param mpi_size
+ * @return size_t
  */
 inline size_t get_job_count(size_t total_job_count, size_t mpi_rank, size_t mpi_size)
 {
@@ -74,12 +76,26 @@ inline size_t get_job_count(size_t total_job_count, size_t mpi_rank, size_t mpi_
 }
 
 /**
+ * @brief Get the job start for each MPI process
+ *
+ * @param total_job_count
+ * @param mpi_rank
+ * @param mpi_size
+ * @return size_t
+ */
+inline size_t get_job_start(size_t total_job_count, size_t mpi_rank, size_t mpi_size)
+{
+    auto additional = mpi_rank < total_job_count % mpi_size ? mpi_rank : total_job_count % mpi_size;
+    return total_job_count / mpi_size * mpi_rank + additional;
+}
+
+/**
  * @brief Get the process rank that need more job
- * 
- * @param job_counts 
- * @param total_job 
- * @param mpi_size 
- * @return int 
+ *
+ * @param job_counts
+ * @param total_job
+ * @param mpi_size
+ * @return int
  */
 int get_need(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 {
@@ -91,11 +107,11 @@ int get_need(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 
 /**
  * @brief Get the process rank that has too much more jobs
- * 
- * @param job_counts 
- * @param total_job 
- * @param mpi_size 
- * @return int 
+ *
+ * @param job_counts
+ * @param total_job
+ * @param mpi_size
+ * @return int
  */
 int get_full(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 {
@@ -107,73 +123,63 @@ int get_full(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 
 /**
  * @brief Send gene range to other process
- * 
- * @param ranges 
- * @param MPI_GENE_TYPE 
- * @param count 
- * @param target 
+ *
+ * @param ranges
+ * @param count
+ * @param target
  */
-void send_gene_range(std::vector<gene::GeneRange> &ranges, MPI_Datatype MPI_GENE_TYPE, size_t count, int target)
-{   
+void send_gene_range(std::vector<gene::GeneRange> &ranges, size_t count, int target)
+{
     // Copy gene range to buffer
-    gene::GeneRange range_buf[count];
     for (size_t i = 0; i < count; ++i)
     {
-        range_buf[i] = ranges.back();
+        gene::GeneRange item = ranges.back();
+        MPI_Send(&item, 1, MPI_GENE_RANGE, target, 0, MPI_COMM_WORLD);
         ranges.pop_back();
     }
     // Send data in buffer to world
-    MPI_Send(range_buf, count, MPI_GENE_TYPE, target, 0, MPI_COMM_WORLD);
+    
 }
 
 /**
  * @brief Receive gene range from other process
- * 
- * @param ranges 
- * @param MPI_GENE_TYPE 
- * @param count 
- * @param target 
+ *
+ * @param ranges
+ * @param count
+ * @param target
  */
-MPI_Status recv_gene_range(std::vector<gene::GeneRange> &ranges, MPI_Datatype MPI_GENE_TYPE, size_t count, int target)
+MPI_Status recv_gene_range(std::vector<gene::GeneRange> &ranges, size_t count, int target)
 {
-    gene::GeneRange range_buf[count];
     MPI_Status s;
-    MPI_Recv(range_buf, count, MPI_GENE_TYPE, 0, 0, MPI_COMM_WORLD, &s);
-    for (size_t i = 0; i < count; ++i)
-        ranges.push_back(range_buf[i]);
+    gene::GeneRange item;
+    for (size_t i = 0; i < count; ++i) {
+        MPI_Recv(&item, 1, MPI_GENE_RANGE, target, 0, MPI_COMM_WORLD, &s);
+        ranges.push_back(item);
+    }
     return s;
 }
 
 int findingGene(const char *input_filepath, const char *output_filepath,
                 const char *print_pattern, int mpi_rank, int mpi_size, size_t line_width = 70)
 {
-    // Create type for gene range
-    const int nitems = 3;
-    int blocklengths[3] = {1, 1, 1};
-    MPI_Datatype types[3] = {MPI_UNSIGNED_LONG_LONG, MPI_UNSIGNED_LONG_LONG, MPI_UINT8_T};
-    MPI_Datatype MPI_GENE_RANGE;
-    MPI_Aint offsets[3];
-    offsets[0] = offsetof(gene::GeneRange, start);
-    offsets[1] = offsetof(gene::GeneRange, end);
-    offsets[2] = offsetof(gene::GeneRange, frame);
-    MPI_Type_create_struct(nitems, blocklengths, offsets, types, &MPI_GENE_RANGE);
-    MPI_Type_commit(&MPI_GENE_RANGE);
+
 
     // Reading orfs from file
-    std::vector<gene::GeneRange> local_orfs;
-    std::vector<gene::GeneRange> local_gene;
-    std::vector<gene::GeneRange> all_gene;
     Fasta f(input_filepath, std::ios::in);
     for (auto seq = f.getNextSequence(); seq; seq = f.getNextSequence())
     {
-        auto orfs = gene::getORFS(seq, -2, 0,
-                                  seq.getSequence().length());
-        // Store result to local orfs vector
-        if (local_orfs.capacity() < local_orfs.size() + orfs.size())
-        {
-            local_orfs.reserve(local_orfs.size() + orfs.size());
+        auto job_start = get_job_start(seq.getSequence().length(),mpi_rank,mpi_size);
+        auto job_end = get_job_start(seq.getSequence().length(),mpi_rank+1,mpi_size);
+        
+        std::vector<gene::GeneRange> local_orfs;
+        for (int frame=-3; frame<=3; ++frame) {
+            auto orfs = gene::getORFS(seq, frame, job_start, job_end);
+            // Store result to local orfs vector
+            if (local_orfs.capacity() < local_orfs.size() + orfs.size())
+                local_orfs.reserve(local_orfs.size() + orfs.size());
+            local_orfs.insert(local_orfs.end(), orfs.begin(), orfs.end());;
         }
-        local_orfs.insert(local_orfs.end(), orfs.begin(), orfs.end());
+        std::cout << mpi_rank << "|" << local_orfs.size() << std::endl;
         // Balancing ORFS
         unsigned long long job_count = local_orfs.size();
         MPI_Allreduce(&job_count, &job_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -193,11 +199,10 @@ int findingGene(const char *input_filepath, const char *output_filepath,
             auto recv_node = get_need(job_counts, job_count, mpi_size);
             while (send_node != -1 || recv_node != -1)
             {
-                send_node = get_full(job_counts, job_count, mpi_size);
-                recv_node = get_need(job_counts, job_count, mpi_size);
                 size_t send_count = job_counts[send_node] - get_job_count(job_count, send_node, mpi_size);
                 size_t recv_count = get_job_count(job_count, recv_node, mpi_size) - job_counts[recv_node];
                 unsigned long long current_count = send_count < recv_count ? send_count : recv_count;
+
                 // Send count first and then send target node
                 if (send_node != 0)
                 {
@@ -214,10 +219,16 @@ int findingGene(const char *input_filepath, const char *output_filepath,
                 job_counts[recv_node] += current_count;
 
                 // If main node need to do job, do it right now
-                if (send_node == 0)
-                    send_gene_range(local_orfs, MPI_GENE_RANGE, current_count, recv_node);
-                if (recv_node == 0)
-                    recv_gene_range(local_orfs, MPI_GENE_RANGE, current_count, send_node);
+                if (send_node == 0) {
+                    send_gene_range(local_orfs, current_count, recv_node);
+                }
+                if (recv_node == 0) {
+                    recv_gene_range(local_orfs, current_count, send_node);
+                }
+
+                // Get next node
+                send_node = get_full(job_counts, job_count, mpi_size);
+                recv_node = get_need(job_counts, job_count, mpi_size);
             }
         }
         else // If it is sub node
@@ -238,40 +249,39 @@ int findingGene(const char *input_filepath, const char *output_filepath,
                 MPI_Status s;
                 MPI_Recv(&current_count, 1, MPI_UNSIGNED_LONG_LONG, 0, 0, MPI_COMM_WORLD, &s);
                 MPI_Recv(&target_node, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &s);
-                if (local_orfs.size() > job_count)
-                    send_gene_range(local_orfs, MPI_GENE_RANGE, current_count, target_node);
-                else
-                    recv_gene_range(local_orfs, MPI_GENE_RANGE, current_count, target_node);
+                if (local_orfs.size() > job_count) {
+                    send_gene_range(local_orfs, current_count, target_node);
+                } else {
+                    recv_gene_range(local_orfs, current_count, target_node);
+                }
             }
         }
-
         // Getting gene
-        auto gene_result = get_gene(local_orfs, seq, 0, orfs.size());
-
+        auto gene_result = get_gene(local_orfs, seq, 0, local_orfs.size());
         // Get total gene count
         job_count = gene_result.size();
-        MPI_Reduce(&job_count, &job_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Allreduce(&job_count, &job_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
         // Gethering gene to main node
-        gene::GeneRange *final_result_buffer = NULL;
-        if (mpi_rank == 0)
-            final_result_buffer = (gene::GeneRange *)malloc(sizeof(gene::GeneRange) * job_count);
-        MPI_Gather(gene_result.data(), gene_result.size(),
-                   MPI_GENE_RANGE, final_result_buffer, job_count,
-                   MPI_GENE_RANGE, 0, MPI_COMM_WORLD);
+        if (mpi_rank == 0) {
+            recv_gene_range(gene_result,job_count-gene_result.size(),MPI_ANY_SOURCE);
+        } else {
+            send_gene_range(gene_result,gene_result.size(),0);
+        }
+                   
         // If it is main node, save result to file
         if (mpi_rank == 0)
         {
             Fasta f_out(output_filepath, std::ios::out | std::ios::app);
-            for (unsigned long long i = 0; i < job_count; i++)
+            for (unsigned long long i = 0; i < job_count; ++i)
             {
                 Sequence seq_out(
                     string_format(print_pattern, seq.getLabel().c_str(),
-                                  final_result_buffer[i].start,
-                                  final_result_buffer[i].end),
+                                  gene_result[i].start,
+                                  gene_result[i].end),
                     seq.getSequence().substr(
-                        final_result_buffer[i].abs_start(),
-                        final_result_buffer[i].length()));
+                        gene_result[i].abs_start(),
+                        gene_result[i].length()));
                 f_out.write(seq_out, line_width);
             }
             f_out.close();
@@ -284,7 +294,7 @@ int findingGene(const char *input_filepath, const char *output_filepath,
 
 /**
  * @brief Print usage of program
- * 
+ *
  * @param prog program name
  */
 void print_usage(const char *prog)
@@ -325,7 +335,6 @@ int main(int argc, char **argv)
     }
     else
     {
-        std::cerr << "Invalid argument" << std::endl;
         print_usage(argv[0]);
         return 1;
     }
@@ -339,8 +348,22 @@ int main(int argc, char **argv)
         std::istringstream line_width_stream(line_width_option);
         line_width_stream >> line_width;
     }
+    // Create type for gene range
+    const int nitems = 3;
+    int blocklengths[3] = {1, 1, 1};
+    MPI_Datatype types[3] = {MPI_UNSIGNED_LONG_LONG, MPI_UNSIGNED_LONG_LONG, MPI_UINT8_T};
+    MPI_Datatype tmp_type;
+    MPI_Aint offsets[3];
+    MPI_Aint lb, extent;
+    offsets[0] = offsetof(gene::GeneRange, start);
+    offsets[1] = offsetof(gene::GeneRange, end);
+    offsets[2] = offsetof(gene::GeneRange, frame);
+    MPI_Type_create_struct(nitems, blocklengths, offsets, types, &tmp_type);
+    MPI_Type_get_extent( tmp_type, &lb, &extent );
+    MPI_Type_create_resized( tmp_type, lb, extent, &MPI_GENE_RANGE );
+    MPI_Type_commit(&MPI_GENE_RANGE);
     // Find gene
-    auto result = findingGene(input_file.c_str(), output_file.c_str(), pattern.c_str(), line_width, rank, size);
+    auto result = findingGene(input_file.c_str(), output_file.c_str(), pattern.c_str(), rank, size, line_width);
     MPI_Finalize();
     return result;
 }

@@ -1,4 +1,4 @@
-#include "fasta.h"
+#include "Fasta.h"
 #include <sstream>
 #include <string>
 #include <algorithm>

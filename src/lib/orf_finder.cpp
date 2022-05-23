@@ -105,6 +105,7 @@ std::vector<gene::GeneRange> gene::getORFS(
     const Sequence &seq, int8_t frame, size_t startLoc,
     size_t endLoc)
 {
+    endLoc -= 1;
     // Get length
     const auto l = seq.getSequence().length();
 
@@ -121,6 +122,7 @@ std::vector<gene::GeneRange> gene::getORFS(
         toRNA(seqData);
     // Convert data based for negative frame
     auto shift = frame;
+    std::cerr << "Get ORF before " << l << " " << startLoc << " " << endLoc << std::endl;
     if (frame < 0)
     {
         shift = -frame;
@@ -131,6 +133,7 @@ std::vector<gene::GeneRange> gene::getORFS(
         reverse(seqData);
         to35RNA(seqData);
     }
+    std::cerr << "Get ORF after " << l << " " << startLoc << " " << endLoc << std::endl;
     shift -= 1;
     const std::set<std::string_view> endCodon{"UAA", "UAG", "UGA"};
     //                                         TTA    CTA    TCA
@@ -138,11 +141,12 @@ std::vector<gene::GeneRange> gene::getORFS(
     //                              CAT
     std::vector<gene::GeneRange> result;
     std::string_view seqView(seqData.c_str(), l);
+    
     #pragma omp parallel for shared(result, startCodon, endCodon, seqView)
     for (int64_t i = startLoc + shift; i < endLoc + shift; i += 3)
     {
         // Because of OpenMP, put the i+3 judge inside of loop
-        if (i + 3 < l)
+        if (i  < l - 3)
             // Check if current codon is start codon
             if (seqView.substr(i, 3).compare(startCodon) == 0)
                 // Find if it has a end codon

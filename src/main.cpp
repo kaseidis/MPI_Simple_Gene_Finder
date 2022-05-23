@@ -76,20 +76,29 @@ int finding_gene(const char *input_filepath, const char *output_filepath,
     // Get all sequences
     for (auto seq = f.getNextSequence(); seq; seq = f.getNextSequence())
     {
-        // Get orfs
-        auto orfs = gene::getORFS(seq, -2, 0,
-                                  seq.getSequence().length());
-        // Filter orfs
-        auto g = get_gene(orfs, seq, 0, orfs.size());
+        
+        std::cerr << "Start Get ORF" << std::endl;
+        for (int frame = -3; frame <= 3; ++frame) {
+            if (frame==0)
+                continue;
+            std::cerr << "Get ORF " << frame << std::endl;
+            // Get orfs
+            auto orfs = gene::getORFS(seq, frame, 0,
+                                    seq.getSequence().length());
+            // Filter orfs
+            std::cerr << "Get Gene " << frame << std::endl;
+            auto g = get_gene(orfs, seq, 0, orfs.size());
 
-        // Save gene to file
-        for (auto i = 0; i < g.size(); i++)
-        {
-            Sequence seq_out(
-                string_format(print_pattern,seq.getLabel().c_str(),g[i].start,g[i].end),
-                seq.getSequence().substr(
-                    g[i].abs_start(), g[i].length()));
-            f_out.write(seq_out, line_width);
+            std::cerr << "Save Gene " << frame << std::endl;
+            // Save gene to file
+            for (auto i = 0; i < g.size(); i++)
+            {
+                Sequence seq_out(
+                    string_format(print_pattern,seq.getLabel().c_str(),frame,g[i].start,g[i].end),
+                    seq.getSequence().substr(
+                        g[i].abs_start(), g[i].length()));
+                f_out.write(seq_out, line_width);
+            }
         }
     }
     // Close file
@@ -110,7 +119,7 @@ void print_usage(const char* prog)
               << " --output OUTPUT_FILE_PATH"
               << " [--pattern LABEL_PATTERN --output-line-width WIDTH]" << std::endl;
     std::cout << "    Default:" << std::endl <<
-        "        LABEL_PATTERN = '%s | gene | LOC=[%d,%d]'" << std::endl <<
+        "        LABEL_PATTERN = '%s | gene | frame=%d | LOC=[%d,%d]'" << std::endl <<
         "        WIDTH = 70" << std::endl;
 }
 
@@ -125,7 +134,7 @@ int main(int argc, char **argv)
     }
 
     // Check for input and output option
-    std::string input_file, output_file, pattern = "%s | gene | LOC=[%d,%d]";
+    std::string input_file, output_file, pattern = "%s | gene | frame=%d | LOC=[%d,%d]";
     size_t line_width = 70;
     if (input.cmdOptionExists("--input") && input.cmdOptionExists("--output"))
     {

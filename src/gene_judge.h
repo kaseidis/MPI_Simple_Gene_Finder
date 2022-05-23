@@ -1,7 +1,7 @@
 #ifndef _GENE_JUDGE_H
 #define _GENE_JUDGE_H
 
-#include "./lib/fasta.h"
+#include "./lib/Fasta.h"
 #include "./lib/orf_finder.h"
 
 #ifdef _MSC_VER // For MSVC

@@ -4,6 +4,10 @@
 *.so
 gene_finder
 gene_finder.exe
+gene_finder_mpi
+gene_finder_mpi.exe
+*.out.*
+*.out
 
 # .vscode
 .vscode/*
