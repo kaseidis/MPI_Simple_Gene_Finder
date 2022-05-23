@@ -1,8 +1,8 @@
 #ifndef _GENE_JUDGE_H
 #define _GENE_JUDGE_H
 
-#include "./lib/Fasta.h"
-#include "./lib/orf_finder.h"
+#include "./lib/Sequence.h"
+#include "./lib/GeneRange.h"
 
 #ifdef _MSC_VER // For MSVC
     #define CROSS_PLATFORM_HIDDEN_API

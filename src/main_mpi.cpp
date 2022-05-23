@@ -10,6 +10,7 @@
 #include <memory>
 #include <sstream>
 #include <mpi.h>
+#include <chrono>
 
 MPI_Datatype MPI_GENE_RANGE;
 
@@ -173,13 +174,14 @@ int findingGene(const char *input_filepath, const char *output_filepath,
         
         std::vector<gene::GeneRange> local_orfs;
         for (int frame=-3; frame<=3; ++frame) {
+            if (frame==0)
+                continue;
             auto orfs = gene::getORFS(seq, frame, job_start, job_end);
             // Store result to local orfs vector
             if (local_orfs.capacity() < local_orfs.size() + orfs.size())
                 local_orfs.reserve(local_orfs.size() + orfs.size());
             local_orfs.insert(local_orfs.end(), orfs.begin(), orfs.end());;
         }
-        std::cout << mpi_rank << "|" << local_orfs.size() << std::endl;
         // Balancing ORFS
         unsigned long long job_count = local_orfs.size();
         MPI_Allreduce(&job_count, &job_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -288,7 +290,6 @@ int findingGene(const char *input_filepath, const char *output_filepath,
         }
     }
     f.close();
-
     return 0;
 }
 
@@ -348,6 +349,15 @@ int main(int argc, char **argv)
         std::istringstream line_width_stream(line_width_option);
         line_width_stream >> line_width;
     }
+    // check for --time option
+    bool check_time = false;
+    if (input.cmdOptionExists("--time"))
+    {
+        auto line_width_option = input.getCmdOption("--time");
+        check_time = true;
+    }
+    
+    auto start = std::chrono::high_resolution_clock::now();
     // Create type for gene range
     const int nitems = 3;
     int blocklengths[3] = {1, 1, 1};
@@ -365,5 +375,11 @@ int main(int argc, char **argv)
     // Find gene
     auto result = findingGene(input_file.c_str(), output_file.c_str(), pattern.c_str(), rank, size, line_width);
     MPI_Finalize();
+    // Timing
+    if (check_time && rank==0) {
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << elapsed.count() << std::endl;
+    }
     return result;
 }

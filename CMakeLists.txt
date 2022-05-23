@@ -5,15 +5,15 @@ project(GeneFinder)
 #check_language(CUDA)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 find_package(OpenMP)
 find_package(MPI)
 
-add_library(gene_judge SHARED ./src/gene_judge.cpp ./src/lib/orf_finder.cpp ./src/lib/Fasta.cpp)
+add_library(gene_judge SHARED ./src/gene_judge.cpp ./src/lib/Sequence.cpp)
 
-add_executable(gene_finder ./src/main.cpp ./src/lib/orf_finder.cpp ./src/lib/Fasta.cpp ./src/lib/InputParser.cpp)
+add_executable(gene_finder ./src/main.cpp ./src/lib/orf_finder.cpp ./src/lib/Sequence.cpp ./src/lib/Fasta.cpp ./src/lib/InputParser.cpp)
 
 target_link_libraries (gene_finder gene_judge)
 
@@ -33,7 +33,7 @@ target_compile_features(gene_judge PRIVATE cxx_std_17)
 
 
 if (MPI_FOUND)
-    add_executable(gene_finder_mpi ./src/main_mpi.cpp ./src/lib/orf_finder.cpp ./src/lib/Fasta.cpp ./src/lib/InputParser.cpp)
+    add_executable(gene_finder_mpi ./src/main_mpi.cpp ./src/lib/orf_finder.cpp ./src/lib/Sequence.cpp ./src/lib/Fasta.cpp ./src/lib/InputParser.cpp)
     include_directories(SYSTEM ${MPI_INCLUDE_PATH})
     target_link_libraries(gene_finder_mpi ${MPI_CXX_LIBRARIES})
     target_link_libraries (gene_finder_mpi gene_judge)

@@ -122,18 +122,15 @@ std::vector<gene::GeneRange> gene::getORFS(
         toRNA(seqData);
     // Convert data based for negative frame
     auto shift = frame;
-    std::cerr << "Get ORF before " << l << " " << startLoc << " " << endLoc << std::endl;
     if (frame < 0)
     {
         shift = -frame;
         size_t org_end = endLoc;
         endLoc = l - startLoc - 1;
         startLoc = l - org_end - 1;
-        //std::cout << startLoc << "||" << endLoc << std::endl;
         reverse(seqData);
         to35RNA(seqData);
     }
-    std::cerr << "Get ORF after " << l << " " << startLoc << " " << endLoc << std::endl;
     shift -= 1;
     const std::set<std::string_view> endCodon{"UAA", "UAG", "UGA"};
     //                                         TTA    CTA    TCA

@@ -9,6 +9,7 @@
 #include <atomic>
 #include <memory>
 #include <sstream>
+#include <chrono>
 
 /**
  * @brief C++11 version of sprintf
@@ -77,19 +78,14 @@ int finding_gene(const char *input_filepath, const char *output_filepath,
     for (auto seq = f.getNextSequence(); seq; seq = f.getNextSequence())
     {
         
-        std::cerr << "Start Get ORF" << std::endl;
         for (int frame = -3; frame <= 3; ++frame) {
             if (frame==0)
                 continue;
-            std::cerr << "Get ORF " << frame << std::endl;
             // Get orfs
             auto orfs = gene::getORFS(seq, frame, 0,
                                     seq.getSequence().length());
             // Filter orfs
-            std::cerr << "Get Gene " << frame << std::endl;
             auto g = get_gene(orfs, seq, 0, orfs.size());
-
-            std::cerr << "Save Gene " << frame << std::endl;
             // Save gene to file
             for (auto i = 0; i < g.size(); i++)
             {
@@ -117,7 +113,7 @@ void print_usage(const char* prog)
 {
     std::cout << "Usage: " << prog << " --input INPUT_FILE_PATH"
               << " --output OUTPUT_FILE_PATH"
-              << " [--pattern LABEL_PATTERN --output-line-width WIDTH]" << std::endl;
+              << " [--pattern LABEL_PATTERN --output-line-width WIDTH --time]" << std::endl;
     std::cout << "    Default:" << std::endl <<
         "        LABEL_PATTERN = '%s | gene | frame=%d | LOC=[%d,%d]'" << std::endl <<
         "        WIDTH = 70" << std::endl;
@@ -157,5 +153,20 @@ int main(int argc, char **argv)
         std::istringstream line_width_stream(line_width_option);
         line_width_stream >> line_width;
     }
-    return finding_gene(input_file.c_str(), output_file.c_str(), pattern.c_str(),line_width);
+    // check for --time option
+    bool check_time = false;
+    if (input.cmdOptionExists("--time"))
+    {
+        auto line_width_option = input.getCmdOption("--time");
+        check_time = true;
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+    auto result = finding_gene(input_file.c_str(), output_file.c_str(), pattern.c_str(),line_width);
+    // Timing
+    if (check_time) {
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        std::cout << elapsed.count() << std::endl;
+    }
+    return result;
 }
