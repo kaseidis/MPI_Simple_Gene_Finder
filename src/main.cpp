@@ -58,17 +58,31 @@ std::vector<gene::GeneRange> get_gene(
     return result;
 }
 
+/**
+ * @brief Finding gene from fasta and save it to another fasta file.
+ * 
+ * @param input_filepath 
+ * @param output_filepath 
+ * @param print_pattern 
+ * @param line_width 
+ * @return int 
+ */
 int finding_gene(const char *input_filepath, const char *output_filepath,
          const char *print_pattern, size_t line_width = 70)
 {
+    // Open files
     Fasta f(input_filepath, std::ios::in);
     Fasta f_out(output_filepath, std::ios::out);
+    // Get all sequences
     for (auto seq = f.getNextSequence(); seq; seq = f.getNextSequence())
     {
+        // Get orfs
         auto orfs = gene::getORFS(seq, -2, 0,
                                   seq.getSequence().length());
+        // Filter orfs
         auto g = get_gene(orfs, seq, 0, orfs.size());
 
+        // Save gene to file
         for (auto i = 0; i < g.size(); i++)
         {
             Sequence seq_out(
@@ -78,11 +92,18 @@ int finding_gene(const char *input_filepath, const char *output_filepath,
             f_out.write(seq_out, line_width);
         }
     }
+    // Close file
     f.close();
     f_out.close();
+    // Return 0 for sucessful.
     return 0;
 }
 
+/**
+ * @brief Print usage of program
+ * 
+ * @param prog program name
+ */
 void print_usage(const char* prog)
 {
     std::cout << "Usage: " << prog << " --input INPUT_FILE_PATH"

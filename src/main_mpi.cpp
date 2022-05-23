@@ -49,7 +49,7 @@ std::vector<gene::GeneRange> get_gene(
     std::vector<gene::GeneRange> result;
     result.resize(orfs.size());
     std::atomic<size_t> resultIndex = 0;
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int64_t i = start; i < end; ++i)
     {
         if (isGene(orfs[i], seq))
@@ -59,12 +59,28 @@ std::vector<gene::GeneRange> get_gene(
     return result;
 }
 
+/**
+ * @brief Get the job count for each MPI process
+ * 
+ * @param total_job_count 
+ * @param mpi_rank 
+ * @param mpi_size 
+ * @return size_t 
+ */
 inline size_t get_job_count(size_t total_job_count, size_t mpi_rank, size_t mpi_size)
 {
     auto additional = mpi_rank < total_job_count % mpi_size ? 1 : 0;
     return total_job_count / mpi_size + additional;
 }
 
+/**
+ * @brief Get the process rank that need more job
+ * 
+ * @param job_counts 
+ * @param total_job 
+ * @param mpi_size 
+ * @return int 
+ */
 int get_need(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 {
     for (auto i = 0; i < mpi_size; ++i)
@@ -73,6 +89,14 @@ int get_need(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
     return -1;
 }
 
+/**
+ * @brief Get the process rank that has too much more jobs
+ * 
+ * @param job_counts 
+ * @param total_job 
+ * @param mpi_size 
+ * @return int 
+ */
 int get_full(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
 {
     for (auto i = 0; i < mpi_size; ++i)
@@ -81,17 +105,35 @@ int get_full(unsigned long long *job_counts, size_t total_job, size_t mpi_size)
     return -1;
 }
 
+/**
+ * @brief Send gene range to other process
+ * 
+ * @param ranges 
+ * @param MPI_GENE_TYPE 
+ * @param count 
+ * @param target 
+ */
 void send_gene_range(std::vector<gene::GeneRange> &ranges, MPI_Datatype MPI_GENE_TYPE, size_t count, int target)
-{
+{   
+    // Copy gene range to buffer
     gene::GeneRange range_buf[count];
     for (size_t i = 0; i < count; ++i)
     {
         range_buf[i] = ranges.back();
         ranges.pop_back();
     }
+    // Send data in buffer to world
     MPI_Send(range_buf, count, MPI_GENE_TYPE, target, 0, MPI_COMM_WORLD);
 }
 
+/**
+ * @brief Receive gene range from other process
+ * 
+ * @param ranges 
+ * @param MPI_GENE_TYPE 
+ * @param count 
+ * @param target 
+ */
 MPI_Status recv_gene_range(std::vector<gene::GeneRange> &ranges, MPI_Datatype MPI_GENE_TYPE, size_t count, int target)
 {
     gene::GeneRange range_buf[count];
@@ -240,6 +282,11 @@ int findingGene(const char *input_filepath, const char *output_filepath,
     return 0;
 }
 
+/**
+ * @brief Print usage of program
+ * 
+ * @param prog program name
+ */
 void print_usage(const char *prog)
 {
     std::cout << "Usage: " << prog << " --input INPUT_FILE_PATH"
@@ -292,6 +339,7 @@ int main(int argc, char **argv)
         std::istringstream line_width_stream(line_width_option);
         line_width_stream >> line_width;
     }
+    // Find gene
     auto result = findingGene(input_file.c_str(), output_file.c_str(), pattern.c_str(), line_width, rank, size);
     MPI_Finalize();
     return result;

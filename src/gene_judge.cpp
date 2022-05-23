@@ -14,6 +14,7 @@
  */
 bool isGene(const gene::GeneRange &range, const Sequence &seq)
 {
+    // Init varible
     auto start = range.abs_start();
     auto end = range.abs_end();
     end = start + range.length() / 3;
@@ -22,14 +23,13 @@ bool isGene(const gene::GeneRange &range, const Sequence &seq)
 
     int n = 200; double t_ratio = 0.6; double t_gc = 0.5;
 
+    // Init string_view for faster access
     std::string_view seq_view(
         seq.getSequence().c_str(),
         seq.getSequence().length());
     auto l = seq_view.length();
     if (l < n || start >= l - n || end > l - n)
-    {
         return false;
-    }
     bool result = false;
     // Searching Cpg island
     #pragma omp parallel for
