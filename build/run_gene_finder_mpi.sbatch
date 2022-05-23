@@ -1,11 +1,13 @@
 #!/bin/bash
-#SBATCH --nodes=4
 #SBATCH --time=0:01:00
 #SBATCH --job-name=gene_finder_mpi
 #SBATCH --partition=fast
-#SBATCH --error=./gene_finder_mpi.err
-#SBATCH --output=./gene_finder_mpi.out
+#SBATCH --error=./output/slurm/gene_finder_mpi_%j.err
+#SBATCH --output=./output/slurm/gene_finder_mpi_%j.out
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=2
 #SBATCH --exclusive
 
-mpirun ./gene_finder_mpi --input ../data/chr21.fasta --output ./chr21_mpi.fasta.out --time
+export OMP_NUM_THREADS=2
+export LD_LIBRARY_PATH=$(pwd):$LD_LIBRARY_PATH
+mpirun ./gene_finder_mpi --input ../data/chr21.fasta --output ./output/chr21_mpi.fasta.out --time > ./output/time/chr21_mpi_$SLURM_NTASKS.out.time

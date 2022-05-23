@@ -186,6 +186,8 @@ int findingGene(const char *input_filepath, const char *output_filepath,
         unsigned long long job_count = local_orfs.size();
         MPI_Allreduce(&job_count, &job_count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
         // If is main process allocate job
+        std::vector<unsigned long long> task_count;
+        std::vector<int> task_target;
         if (mpi_rank == 0)
         {
             // Get job count from every sub node
@@ -210,28 +212,26 @@ int findingGene(const char *input_filepath, const char *output_filepath,
                 {
                     MPI_Send(&current_count, 1, MPI_UNSIGNED_LONG_LONG, send_node, 0, MPI_COMM_WORLD);
                     MPI_Send(&recv_node, 1, MPI_INT, send_node, 0, MPI_COMM_WORLD);
+                } else {
+                    task_count.push_back(current_count);
+                    task_target.push_back(recv_node);
                 }
                 if (recv_node != 0)
                 {
                     MPI_Send(&current_count, 1, MPI_UNSIGNED_LONG_LONG, recv_node, 0, MPI_COMM_WORLD);
                     MPI_Send(&send_node, 1, MPI_INT, recv_node, 0, MPI_COMM_WORLD);
+                } else {
+                    task_count.push_back(current_count);
+                    task_target.push_back(send_node);
                 }
                 // Record balancing result
                 job_counts[send_node] -= current_count;
                 job_counts[recv_node] += current_count;
-
-                // If main node need to do job, do it right now
-                if (send_node == 0) {
-                    send_gene_range(local_orfs, current_count, recv_node);
-                }
-                if (recv_node == 0) {
-                    recv_gene_range(local_orfs, current_count, send_node);
-                }
-
                 // Get next node
                 send_node = get_full(job_counts, job_count, mpi_size);
                 recv_node = get_need(job_counts, job_count, mpi_size);
             }
+            job_count = job_counts[0];
         }
         else // If it is sub node
         {
@@ -244,19 +244,33 @@ int findingGene(const char *input_filepath, const char *output_filepath,
             job_count = get_job_count(job_count, mpi_rank, mpi_size);
 
             // Getting balancing target from main node. Then, getting job from sub node.
-            while (local_orfs.size() != job_count)
+            while (local_size != job_count)
             {
                 unsigned long long current_count;
                 int target_node;
                 MPI_Status s;
                 MPI_Recv(&current_count, 1, MPI_UNSIGNED_LONG_LONG, 0, 0, MPI_COMM_WORLD, &s);
                 MPI_Recv(&target_node, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &s);
-                if (local_orfs.size() > job_count) {
-                    send_gene_range(local_orfs, current_count, target_node);
-                } else {
-                    recv_gene_range(local_orfs, current_count, target_node);
-                }
+                task_count.push_back(current_count);
+                task_target.push_back(target_node);
+                if (local_size > job_count)
+                    local_size -= current_count;
+                else
+                    local_size += current_count;
             }
+        }
+        // Sync Job
+        unsigned long long current_count;
+        int target_node;
+        while (!task_count.empty()) {
+            current_count = task_count.back();
+            target_node = task_target.back();
+            if (local_orfs.size() > job_count)
+                send_gene_range(local_orfs, current_count, target_node);
+            else
+                recv_gene_range(local_orfs, current_count, target_node);
+            task_count.pop_back();
+            task_target.pop_back();
         }
         // Getting gene
         auto gene_result = get_gene(local_orfs, seq, 0, local_orfs.size());
