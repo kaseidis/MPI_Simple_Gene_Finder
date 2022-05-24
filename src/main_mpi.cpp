@@ -1,9 +1,9 @@
 #include "./lib/Fasta.h"
 #include "./lib/InputParser.h"
 #include "./lib/orf_finder.h"
+#include "./lib/gene_judge.h"
 #include <iostream>
 #include <vector>
-#include "gene_judge.h"
 #include <omp.h>
 #include <string>
 #include <atomic>
@@ -52,11 +52,12 @@ std::vector<gene::GeneRange> get_gene(
     std::vector<gene::GeneRange> result;
     result.resize(orfs.size());
     std::atomic<size_t> resultIndex = 0;
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int64_t i = start; i < end; ++i)
     {
-        if (isGene(orfs[i], seq))
-            result[resultIndex++] = orfs[i];
+        auto resSeq = isGene(orfs[i], seq);
+        if (resSeq)
+            result[resultIndex++] = resSeq;
     }
     result.resize(resultIndex);
     return result;

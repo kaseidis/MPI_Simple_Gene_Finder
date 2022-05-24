@@ -12,7 +12,7 @@ find_package(OpenMP)
 find_package(MPI)
 
 # Gene gene_judge library
-add_library(gene_judge SHARED ./src/gene_judge.cpp ./src/lib/Sequence.cpp)
+add_library(gene_judge SHARED ./gene_judge/gene_judge.cpp ./gene_judge/lib/Sequence.cpp)
 target_compile_features(gene_judge PRIVATE cxx_std_17)
 
 # Non MPI Version

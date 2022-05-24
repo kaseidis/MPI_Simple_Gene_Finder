@@ -1,5 +1,6 @@
-#include "gene_judge.h"
+#include "./lib/gene_judge.h"
 #include <omp.h>
+#include <string_view>
 
 /**
  * Judge ORF is a gene or not, this is a simple demo that following this
@@ -12,7 +13,7 @@
  * User can modifie this file, then using ``make gene_judge`` command
  * that process gene finding algorithm by they defined.
  */
-bool isGene(const gene::GeneRange &range, const Sequence &seq)
+gene::GeneRange isGene(const gene::GeneRange &range, const Sequence &seq)
 {
     // Init varible
     auto start = range.abs_start();
@@ -23,14 +24,18 @@ bool isGene(const gene::GeneRange &range, const Sequence &seq)
 
     int n = 200; double t_ratio = 0.6; double t_gc = 0.5;
 
+    gene::GeneRange result{INVALID_RANGE_LOC,INVALID_RANGE_LOC,INVALID_FRAME};
     // Init string_view for faster access
     std::string_view seq_view(
         seq.getSequence().c_str(),
         seq.getSequence().length());
     auto l = seq_view.length();
+    // Check if range is invalid
     if (l < n || start >= l - n || end > l - n)
-        return false;
-    bool result = false;
+        return result;
+    // Check if it has at least 96 bp
+    if (range.length() < 96)
+        return result;
     // Searching Cpg island
     #pragma omp parallel for
     for (int64_t i = start; i < end; ++i)
@@ -55,7 +60,7 @@ bool isGene(const gene::GeneRange &range, const Sequence &seq)
         gc_content /= n;
         // Check and set result, not return because OpenMP
         if (oe_ratio > t_ratio && gc_content > t_gc)
-            result = true;
+            result = range;
     }
 
     return result;
