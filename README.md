@@ -1,6 +1,8 @@
 # MPI Simple Gene Finder Framework
 
-This program is a framework that can do gene finding on cluster using MPI.
+# Summary
+
+In bioinformatics, gene finding refers to identifying regions of genomic DNA that encode genes. Gene finding includes protein-coding genes and RNA genes. Gene discovery is the first and one of the most critical steps in understanding the sequencing of a species' genome. However, the process of gene finding takes a lot of time. This program is a framework that can do gene finding on the cluster using MPI.
 
 ## Compile
 
@@ -22,8 +24,8 @@ cmake .
 make
 ```
 
-### Built Binary
-There is a X64 Linux Build in folder: [./build/](./build/)
+## Built Binary
+There is a X64 Linux Build (openMPI) in folder: [./build/](./build/)
 
 ## Run
 Single Node Version:
@@ -43,13 +45,15 @@ Usage: mpirun [MPI_ARGS] ./gene_finder_mpi --input INPUT_FILE_PATH --output OUTP
 ```
 
 Here are sample run command sbatch script:
-[Single Node Version](./build/run_gene_finder.sh)
-[MPI Version](./build/run_gene_finder_mpi.sbatch)
+- [Single Node Version](./build/run_gene_finder.sh)
+- [MPI Version](./build/run_gene_finder_mpi.sbatch)
 
 
 ## Development
 
 ### Self Defined ORF Evaluation Function
+
+All code for developing library are in [``./gene_judge/``](./gene_judge/) directory.
 
 You can edit [``./gene_judge/gene_judge.cpp``](./gene_judge/gene_judge.cpp) to program you own gene identifing function.
 
@@ -65,3 +69,9 @@ cmake .
 make gene_judge
 ```
 It will genreate a dynamic linked library file. You can replace the file in build directory (.so or .dll) to the one you build.
+
+## Paper & Presntation
+
+[``Distributed Framework for Gene Finding using Open-MPI``](./paper/paper.pdf)
+
+[``Presentation``](./paper/presentation.pdf)

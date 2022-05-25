@@ -1,4 +1,4 @@
-#include "gene_judge.h"
+#include "./lib/gene_judge.h"
 #include <omp.h>
 #include <string_view>
 
