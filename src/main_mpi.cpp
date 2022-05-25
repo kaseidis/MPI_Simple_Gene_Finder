@@ -289,7 +289,7 @@ int findingGene(const char *input_filepath, const char *output_filepath,
         // If it is main node, save result to file
         if (mpi_rank == 0)
         {
-            Fasta f_out(output_filepath, std::ios::out | std::ios::app);
+            Fasta f_out(output_filepath, std::ios::out);
             for (unsigned long long i = 0; i < job_count; ++i)
             {
                 Sequence seq_out(
