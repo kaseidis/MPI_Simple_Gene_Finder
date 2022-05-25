@@ -2,7 +2,7 @@
 
 # Summary
 
-In bioinformatics, gene finding refers to identifying regions of genomic DNA that encode genes. Gene finding includes protein-coding genes and RNA genes. Gene discovery is the first and one of the most critical steps in understanding the sequencing of a species' genome. However, the process of gene finding takes a lot of time. This program is a framework that can do gene finding on the cluster using MPI.
+In bioinformatics, gene finding refers to identifying regions of genomic DNA that encode genes. Gene finding includes protein-coding genes and RNA genes. Gene discovery is the first and one of the most critical steps in understanding the sequencing of a species' genome. However, the process of gene finding takes a lot of time. This program is a framework that can help us do gene finding job on multiple nodes using MPI.
 
 ## Compile
 
@@ -74,4 +74,4 @@ It will genreate a dynamic linked library file. You can replace the file in buil
 
 [``Distributed Framework for Gene Finding using Open-MPI``](./paper/paper.pdf)
 
-[``Presentation``](./paper/presentation.pdf)
+[``Presentation Slides``](./paper/presentation.pdf)
